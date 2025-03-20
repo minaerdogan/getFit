@@ -13,4 +13,4 @@ rewards daily consistency, while a badge system celebrates major achievements (e
 routine for a year).
 
 Platform and Data Storage: Built with Flutter, getFit runs on Android from a single codebase.
-It stores height, weight, sex, workout logs, and diet entries
+It stores height, weight, sex, workout logs, and diet entries.
