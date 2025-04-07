@@ -1,16 +1,15 @@
-# getfit
+getFit is designed to guide users toward their health goals with clear, goal-based programs.
 
-A new Flutter project.
+Main Purpose and Target Audience: Modern lifestyles often limit time for exercise, getFit tackles this
+issue by providing straightforward workout plans, simple tracking features, and guidance for users of
+all experience levels who need to achieve goals ranging from strength and endurance to weight
+management.
 
-## Getting Started
+Key Features: getFit delivers goal-oriented programs that allow users to track sets, reps, rest times,
+and bodyweight. A diet log is available to record meals and offer healthy eating tips. A streak system
+rewards daily consistency, while a badge system celebrates major achievements (e.g., maintaining a
+routine for a year).
 
-This project is a starting point for a Flutter application.
+Platform and Data Storage: Built with Flutter, getFit runs on Android from a single codebase.
+It stores height, weight, sex, workout logs, and diet entries.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
