@@ -61,6 +61,9 @@ flutter:
   assets:
     - assets/7123025_logo_google_g_icon.png
     - assets/WhatsApp Image 2025-04-16 at 22.06.53.jpeg
+    - assets/fitness_woman.png
+    - assets/get_ready_graphic.png
+    - assets/graph.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

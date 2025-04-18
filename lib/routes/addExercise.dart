@@ -75,13 +75,11 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     });
   }
 
-  // --- MODIFIED SAVE METHOD ---
   void _saveExercise() {
     final exercise = _selectedExercise;
-    final globalWeightString = _weightController.text.trim(); // Weight entered in the "Add your weight" section
+    final globalWeightString = _weightController.text.trim();
     final comments = _commentsController.text.trim();
 
-    // Validation
     if (exercise == null || exercise.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please choose an exercise')),
@@ -95,18 +93,15 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       return;
     }
 
-    // --- Create the data object to return ---
     final resultData = AddedExerciseData(
       name: exercise,
-      sets: List.from(_sets), // Create a copy of the list (sets now includes individual set weights)
-      weight: globalWeightString.isNotEmpty ? globalWeightString : null, // Return the global weight if entered
+      sets: List.from(_sets),
+      weight: globalWeightString.isNotEmpty ? globalWeightString : null,
       comments: comments,
     );
 
-    // --- Pop the screen and return the data ---
     Navigator.pop(context, resultData);
   }
-  // --- END OF MODIFIED SAVE METHOD ---
 
   @override
   void dispose() {
@@ -130,125 +125,115 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         title: const Text('Add Custom Exercise', style: TextStyle(color: Colors.black, fontSize: 18)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- Choose Exercise Dropdown ---
-              DropdownButtonFormField<String>(
-                value: _selectedExercise,
-                hint: Text('Choose Exercise', style: TextStyle(color: isExerciseDropdownEnabled ? Colors.grey.shade700 : Colors.grey.shade400)),
-                isExpanded: true,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                  fillColor: isExerciseDropdownEnabled ? Colors.white : Colors.grey.shade200,
-                  filled: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Theme.of(context).primaryColor)),
-                  disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
-                ),
-                items: _exerciseList.map((String value) => DropdownMenuItem<String>(value: value, child: Text(value))).toList(),
-                onChanged: isExerciseDropdownEnabled ? (String? newValue) => setState(() => _selectedExercise = newValue) : null,
+      body: Padding( // Removed SingleChildScrollView here
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _selectedExercise,
+              hint: Text('Choose Exercise', style: TextStyle(color: isExerciseDropdownEnabled ? Colors.grey.shade700 : Colors.grey.shade400)),
+              isExpanded: true,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                fillColor: isExerciseDropdownEnabled ? Colors.white : Colors.grey.shade200,
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Theme.of(context).primaryColor)),
+                disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
               ),
-              const SizedBox(height: 20),
-
-              // --- Enter Repetitions Input ---
-              TextFormField(
-                controller: _repetitionsController,
-                decoration: InputDecoration(labelText: 'Enter repetitions', hintText: 'e.g., 12', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0)),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              items: _exerciseList.map((String value) => DropdownMenuItem<String>(value: value, child: Text(value))).toList(),
+              onChanged: isExerciseDropdownEnabled ? (String? newValue) => setState(() => _selectedExercise = newValue) : null,
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _repetitionsController,
+              decoration: InputDecoration(labelText: 'Enter repetitions', hintText: 'e.g., 12', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0)),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _addSet,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade100, foregroundColor: Colors.blue.shade800, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), padding: const EdgeInsets.symmetric(vertical: 12.0)),
+                child: const Text('Add a set'),
               ),
-              const SizedBox(height: 15),
-
-              // --- Add Set Button ---
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _addSet,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade100, foregroundColor: Colors.blue.shade800, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), padding: const EdgeInsets.symmetric(vertical: 12.0)),
-                  child: const Text('Add a set'),
-                ),
-              ),
-              const SizedBox(height: 25),
-
-              // --- Dynamically Added Sets List ---
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+            ),
+            const SizedBox(height: 25),
+            Expanded( // Use Expanded to make the ListView take available vertical space
+              child: ListView.builder(
+                shrinkWrap: true, // Important for working inside Column & Expanded
+                physics: const ClampingScrollPhysics(),
                 itemCount: _sets.length,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Set ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('${_sets[index].repetitions} repetition${_sets[index].repetitions == 1 ? '' : 's'}'),
-                          if (_sets[index].weight != null && _sets[index].weight!.isNotEmpty)
-                            Text('${_sets[index].weight} KG', style: const TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
-                        onPressed: () => _deleteSet(index),
-                        tooltip: 'Delete Set',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_sets.isNotEmpty) const Divider(height: 30, thickness: 1),
-
-              // --- Add Your Weight Section ---
-              const Text('Add your weight (Optional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: TextFormField(
-                      controller: _weightController,
-                      textAlign: TextAlign.center,
-                      decoration: InputDecoration(hintText: 'e.g., 20', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(vertical: 8.0)),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+([.,]?\d{0,2})'))],
+                itemBuilder: (context, index) => Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Set ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('${_sets[index].repetitions} repetition${_sets[index].repetitions == 1 ? '' : 's'}'),
+                            if (_sets[index].weight != null && _sets[index].weight!.isNotEmpty)
+                              Text('${_sets[index].weight} KG', style: const TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
+                          onPressed: () => _deleteSet(index),
+                          tooltip: 'Delete Set',
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text('KG', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // --- Your Comments Section ---
-              const Text('Your comments (Optional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _commentsController,
-                decoration: InputDecoration(hintText: 'e.g., Focus on form', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0)),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 30),
-
-              // --- Save Button ---
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveExercise, // Calls the modified save method
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple.shade400, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
-                  child: const Text('Save Exercise', style: TextStyle(fontSize: 16)),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+            if (_sets.isNotEmpty) const Divider(height: 30, thickness: 1),
+            const Text('Add your weight (Optional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: TextFormField(
+                    controller: _weightController,
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(hintText: 'e.g., 20', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(vertical: 8.0)),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+([.,]?\d{0,2})'))],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('KG', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text('Your comments (Optional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _commentsController,
+              decoration: InputDecoration(hintText: 'e.g., Focus on form', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0)),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveExercise,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple.shade400, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
+                child: const Text('Save Exercise', style: TextStyle(fontSize: 16)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
