@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'personal_info_page.dart';
 
 void main() {
-  runApp(const GetFitApp());
+  runApp(const MyApp());
 }
 
-class GetFitApp extends StatelessWidget {
-  const GetFitApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
