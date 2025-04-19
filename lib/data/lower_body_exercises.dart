@@ -1,7 +1,7 @@
 final List<Map<String, dynamic>> lowerBodyExercises = [
   {
     'name': 'Squats',
-    'assetPath': 'assets/squat.PNG',
+    'assetPath': 'assets/Squat.PNG',
     'completed': false,
     'description': 'Stand with your feet shoulder-width apart, push your hips back and lower your body into a squat, then rise back up.'
   },
