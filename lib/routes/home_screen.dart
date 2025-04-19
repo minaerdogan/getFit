@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/textstyles.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -8,10 +9,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<String> _workouts = [
-    'Abs Workout', // Or 'Abs Workout' if you prefer the full name
-    'Full Body Workout', // Or 'Full Body Workout'
-    'Lower Body Workout', // Or 'Lower Body Workout'
-    // Add other workout categories as needed
+    'Abs Workout',
+    'Full Body Workout',
+    'Lower Body Workout',
   ];
 
   int _selectedIndex = 0;
@@ -43,9 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Welcome to getFit!',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Center(
+                child: Text(
+                  'Welcome to getFit!',
+                  style: AppTextStyles.welcome,
+                ),
               ),
               const SizedBox(height: 20),
               ListView.builder(
@@ -57,11 +59,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
-                      title: Text(workout),
+                      title: Text(
+                        workout,
+                        style: AppTextStyles.listItem,
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () {
@@ -81,8 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         } else if (workout == 'Lower Body Workout') {
                           routeName = '/lower_body_page';
                         } else {
-                          // Handle other workout types or provide a default route
-                          routeName = '/workout_details_page'; // Or some other default
+                          routeName = '/workout_details_page';
                         }
 
                         if (routeName.isNotEmpty) {

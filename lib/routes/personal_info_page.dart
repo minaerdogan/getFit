@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Required for input formatters
+import 'package:flutter/services.dart';
+import '../utils/textstyles.dart';
+import '../utils/colors.dart';
+
 
 
 class PersonalInfoPage extends StatefulWidget {
@@ -10,21 +13,21 @@ class PersonalInfoPage extends StatefulWidget {
 }
 
 class _PersonalInfoPageState extends State<PersonalInfoPage> {
-  // Key to manage the state of the Form
+
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for the text fields
+
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
 
-  // State variable for the selected gender
+
   String? _selectedGender;
   final List<String> _genders = ['Male', 'Female', 'Other']; // Available gender options
 
   @override
   void dispose() {
-    // Dispose controllers when the widget is removed
+
     _dobController.dispose();
     _weightController.dispose();
     _heightController.dispose();
@@ -32,17 +35,17 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   }
 
 
-  // --- Validation Logic ---
 
-  // Validator for required fields (like DOB, can be adapted)
+
+
   String? _validateRequired(String? value, String fieldName) {
     if (value == null || value.isEmpty) {
       return '$fieldName cannot be empty';
     }
-    return null; // Valid
+    return null;
   }
 
-  // Validator for Date of Birth (checks format yyyy-mm-dd and valid date)
+
   String? _validateDob(String? value) {
     if (value == null || value.isEmpty) {
       return 'Date of Birth cannot be empty';
@@ -73,13 +76,13 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       }
       return null; // Valid date
     } catch (e) {
-      return 'Invalid date entered'; // Catch any parsing errors
+      return 'Invalid date entered';
     }
   }
 
 
 
-// Validator for positive numbers (Weight/Height)
+// Validator for positive nums
   String? _validatePositiveNumber(String? value, String fieldName) {
     if (value == null || value.isEmpty) {
       return '$fieldName cannot be empty';
@@ -110,7 +113,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     return null; // Valid
   }
 
-  // Validator for Gender dropdown
+  // Validator for gender
   String? _validateGender(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please select your gender';
@@ -119,15 +122,15 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   }
 
 
-// --- Helper function to calculate age (consider edge cases more robustly if needed) ---
-  int _calculateAge(String dobText) {
-    // This assumes dobText is already validated to be in 'yyyy-mm-dd' format
-    final birthDate = DateTime.tryParse(dobText);
-    if (birthDate == null) return 0; // Should not happen if validation passes
 
-    final currentDate = DateTime.now(); // Use current date for accuracy
+  int _calculateAge(String dobText) {
+
+    final birthDate = DateTime.tryParse(dobText);
+    if (birthDate == null) return 0;
+
+    final currentDate = DateTime.now();
     int age = currentDate.year - birthDate.year;
-    // Adjust age if birthday hasn't occurred yet this year
+
     if (currentDate.month < birthDate.month ||
         (currentDate.month == birthDate.month && currentDate.day < birthDate.day)) {
       age--;
@@ -136,13 +139,12 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     return (age > 0 && age <= 110) ? age : 0; // Return 0 if age is negative or greater than 110
   }
 
-  // --- Function to handle form submission ---
-  void _submitForm() {
-    // Validate all form fields
-    if (_formKey.currentState!.validate()) {
-      // If validation passes, proceed
-      _formKey.currentState!.save(); // Optional: Save form data if needed
 
+  void _submitForm() {
+
+    if (_formKey.currentState!.validate()) {
+
+      _formKey.currentState!.save();
       final age = _calculateAge(_dobController.text);
       final weight = _weightController.text;
       final height = _heightController.text;
@@ -154,8 +156,8 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       print('Height: $height CM');
       print('Gender: $gender');
 
-      // TODO: Implement next steps (e.g., save data, navigate to next page)
-      // Example navigation:
+
+
       Navigator.pushNamed(context, '/get_ready');
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,7 +165,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       );
 
     } else {
-      // If validation fails, errors will be displayed on the fields
+
       print('Form is invalid. Please check the fields.');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fix the errors in the form')),
@@ -172,43 +174,38 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   }
 
 
-  // --- Build Method ---
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Optional AppBar
-      // appBar: AppBar(title: Text("Complete Profile")),
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          // Wrap content in a Form widget
+
           child: Form(
-            key: _formKey, // Assign the key
+            key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- Image ---
+
                 Center(
                   child: Image.asset(
-                    'assets/fitness_woman.png', // Ensure this asset exists in pubspec.yaml and the path is correct
+                    'assets/fitness_woman.png',
                     height: 200,
                     fit: BoxFit.contain,
-                    // Optional: Add error builder for image loading issues
+
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.image_not_supported, size: 100, color: Colors.grey); // Placeholder on error
+                      return const Icon(Icons.image_not_supported, size: 100, color: Colors.grey);
                     },
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // --- Header Text ---
-                const Text(
+
+                Text(
                   "Let’s complete your profile",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                  style: AppTextStyles.header.copyWith(fontSize: 22, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 5),
                 Text(
@@ -217,32 +214,32 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 ),
                 const SizedBox(height: 30),
 
-                // --- Input Fields ---
-                _buildGenderDropdown(), // Use the updated dropdown builder
+
+                _buildGenderDropdown(),
                 _buildTextField(
                   "Date of Birth (yyyy-mm-dd)",
                   _dobController,
                   icon: Icons.cake,
-                  keyboardType: TextInputType.datetime, // Suggest appropriate keyboard
-                  validator: _validateDob, // Assign DOB validator
+                  keyboardType: TextInputType.datetime,
+                  validator: _validateDob,
                 ),
                 _buildWeightHeightField(
                   "Your Weight",
                   _weightController,
                   icon: Icons.monitor_weight,
                   unit: "KG",
-                  validator: (value) => _validatePositiveNumber(value, "Weight"), // Assign positive number validator
+                  validator: (value) => _validatePositiveNumber(value, "Weight"), // positive number validator
                 ),
                 _buildWeightHeightField(
                   "Your Height",
                   _heightController,
                   icon: Icons.height,
                   unit: "CM",
-                  validator: (value) => _validatePositiveNumber(value, "Height"), // Assign positive number validator
+                  validator: (value) => _validatePositiveNumber(value, "Height"), //  positive number validator
                 ),
                 const SizedBox(height: 30),
 
-                // --- Submit Button ---
+
                 Center(
                   child: Container(
                     width: double.infinity,
@@ -250,12 +247,12 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(30),
                         gradient: const LinearGradient(
-                          // Define gradient colors (ensure they are not too light/dark for text contrast)
-                          colors: [Color(0xFF7B61FF), Color(0xFF9E8BFF)], // Example slightly adjusted gradient
+
+                          colors: [Color(0xFF7B61FF), Color(0xFF9E8BFF)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
-                        boxShadow: [ // Optional: Add a subtle shadow for depth
+                        boxShadow: [
                           BoxShadow(
                             color: Colors.grey.withOpacity(0.3),
                             spreadRadius: 1,
@@ -271,7 +268,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      onPressed: _submitForm, // Call the submit function
+                      onPressed: _submitForm, // submit function
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -286,7 +283,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20), // Padding at the bottom
+                const SizedBox(height: 20), // Padding
               ],
             ),
           ),
@@ -295,15 +292,15 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     );
   }
 
-  // --- Helper Widgets for Building Fields ---
 
-  // Updated TextField builder with validator and keyboardType
+
+
   Widget _buildTextField(
       String label,
       TextEditingController controller, {
         IconData? icon,
         TextInputType? keyboardType,
-        String? Function(String?)? validator, // Add validator parameter
+        String? Function(String?)? validator,
       }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -345,14 +342,14 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // Align items to top for validation message
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: TextFormField( // Use TextFormField for validation
+            child: TextFormField(
               controller: controller,
-              // Use numberWithOptions for decimal input, allowSigned: false prevents minus sign
+
               keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
-              // Filter input to allow only numbers and a single decimal point
+
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -375,23 +372,23 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 fillColor: Colors.grey[50],
                 contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
               ),
-              validator: validator, // Assign the validator
+              validator: validator,
             ),
           ),
           const SizedBox(width: 10),
-          // Unit display container
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), // Match approx text field height
             decoration: BoxDecoration(
-              // Use a theme color or a specific color
+
               color: Theme.of(context).primaryColorLight, // Example: Light purple
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               unit,
               style: TextStyle(
-                // Use a contrasting color
-                color: Theme.of(context).primaryColorDark, // Example: Darker purple
+
+                color: Theme.of(context).primaryColorDark,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -402,11 +399,11 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     );
   }
 
-  // Updated Gender Dropdown builder using DropdownButtonFormField
+
   Widget _buildGenderDropdown() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
-      // Use DropdownButtonFormField for integration with Form validation
+
       child: DropdownButtonFormField<String>(
         value: _selectedGender,
         decoration: InputDecoration(
@@ -428,8 +425,8 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
           fillColor: Colors.grey[50],
           contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
         ),
-        hint: const Text("Select your gender"), // Hint shown when no value is selected
-        isExpanded: true, // Make dropdown take available width
+        hint: const Text("Select your gender"),
+        isExpanded: true,
         items: _genders.map<DropdownMenuItem<String>>((String value) {
           return DropdownMenuItem<String>(
             value: value,
@@ -441,7 +438,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             _selectedGender = newValue;
           });
         },
-        validator: _validateGender, // Assign the gender validator
+        validator: _validateGender,
       ),
     );
   }

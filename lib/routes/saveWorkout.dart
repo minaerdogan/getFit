@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:proje/routes/addExercise.dart'; // Ensure this import is correct
+import 'package:proje/routes/addExercise.dart';
 
 class AddWorkoutScheduleScreen extends StatefulWidget {
   const AddWorkoutScheduleScreen({super.key});
