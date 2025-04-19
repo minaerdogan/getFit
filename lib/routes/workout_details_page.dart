@@ -82,11 +82,15 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                 children: [
                   Align(
                     alignment: Alignment.center,
-                    child: Image.asset(
-                      'assets/header_banner.png', // kendi koyduğun dosya adını yaz
-                      fit: BoxFit.cover,
+                    child: Image.network(
+                      'https://assets.roguefitness.com/f_auto,q_auto,c_limit,w_1536,b_rgb:f8f8f8/catalog/Conditioning/Strength%20Equipment/Dumbbells/XX7125/XX7125-WEB3_rglczm.png',
                       width: double.infinity,
-                    ),
+                      height: 260,
+                      fit: BoxFit.fitHeight,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.broken_image, size: 100, color: Colors.grey);
+                      },
+                    )
 
                   ),
                   Positioned(

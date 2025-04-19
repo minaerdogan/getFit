@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:proje/utils/colors.dart'; // Assuming your utils folder is in the root
+import 'package:proje/utils/colors.dart';
 
 class GetReadyScreen extends StatelessWidget {
   const GetReadyScreen({super.key});
