@@ -1,4 +1,6 @@
 // --- add_exercise_screen.dart ---
+
+//Card widget implemented on this page
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
