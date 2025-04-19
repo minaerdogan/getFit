@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 
 
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -49,13 +50,14 @@ class _LoginScreenState extends State<LoginScreen> {
       print('Logging in with Email: $email, Password: $password');
       // Add your actual login API call or authentication logic here
       // For now, without a database, just navigate to the home page
+      FocusScopeNode currentFocus = FocusScope.of(context);
+      if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+        currentFocus.unfocus();
+      }
 
-      /*Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-        // Home screen e geçiş
-      );
-      */
+      Future.delayed(const Duration(milliseconds: 250), () {
+        Navigator.pushNamed(context, '/get_ready');
+      });
 
     }
   }
@@ -65,6 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(''),
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(
@@ -208,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   GestureDetector(
                     onTap: () {
                       print('Register tapped');
-                      //Navigator.pushNamed(context, '/register');
+                      Navigator.pushNamed(context, '/register');
                     },
                     child: Text(
                       'Register',
