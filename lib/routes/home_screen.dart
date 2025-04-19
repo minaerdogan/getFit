@@ -8,10 +8,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<String> _workouts = [
-    'Morning Yoga',
-    'HIIT Session',
-    'Strength Training',
-    'Cardio Blast',
+    'Abs Workout', // Or 'Abs Workout' if you prefer the full name
+    'Full Body Workout', // Or 'Full Body Workout'
+    'Lower Body Workout', // Or 'Lower Body Workout'
+    // Add other workout categories as needed
   ];
 
   int _selectedIndex = 0;
@@ -57,9 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundImage: AssetImage('assets/images/workout.png'),
-                      ),
                       title: Text(workout),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -76,11 +73,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/workoutDetails',
-                          arguments: workout,
-                        );
+                        String routeName = '';
+                        if (workout == 'Abs Workout') {
+                          routeName = '/abs_page';
+                        } else if (workout == 'Full Body Workout') {
+                          routeName = '/full_body_page';
+                        } else if (workout == 'Lower Body Workout') {
+                          routeName = '/lower_body_page';
+                        } else {
+                          // Handle other workout types or provide a default route
+                          routeName = '/workout_details_page'; // Or some other default
+                        }
+
+                        if (routeName.isNotEmpty) {
+                          Navigator.pushNamed(context, routeName);
+                        }
                       },
                     ),
                   );

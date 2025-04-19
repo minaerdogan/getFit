@@ -8,6 +8,12 @@ import 'package:proje/routes/personal_info_page.dart';
 import 'package:proje/routes/get_ready.dart';
 import 'package:proje/routes/home_screen.dart';
 import 'package:proje/routes/my_account.dart';
+import 'package:proje/routes/exercise_done.dart';
+import 'package:proje/routes/workout_details_page.dart';
+import 'package:proje/routes/abs_page.dart';
+import 'package:proje/routes/full_body_page.dart';
+import 'package:proje/routes/lower_body_page.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -24,7 +30,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/home_screen', // Set the initial route
+      initialRoute: '/onboarding', // Set the initial route
       routes: {
         '/onboarding': (context) => const OnboardingScreen(), // Define named routes
         '/login': (context) => const LoginScreen(),
@@ -35,6 +41,11 @@ class MyApp extends StatelessWidget {
         '/get_ready': (context) => const GetReadyScreen(),
         '/home_screen': (context) => const HomeScreen(),
         '/my_account': (context) => const MyAccountPage(),
+        '/exercise_done':(context) => const ExerciseDoneScreen(),
+        '/workout_details_page':(context) => const WorkoutDetailsPage(workoutTitle: '', exercises: []),
+        '/abs_page':(context) => const AbsPage(),
+        '/full_body_page' :(context) => const FullBodyPage(),
+        '/lower_body_page': (context) => const LowerBodyPage(),
       },
     );
   }
