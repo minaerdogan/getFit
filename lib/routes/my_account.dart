@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:google_sign_in/google_sign_in.dart'; // Import GoogleSignIn
 import 'login.dart'; // Keep for the full edit page
 
 class MyAccountPage extends StatefulWidget {
@@ -291,7 +293,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                     });
                     Navigator.of(context).pop(); // Close the dialog
                   },
-                  child: Stack(  // Use Stack to overlay the icon
+                  child: Stack(
                     children: [
                       CircleAvatar(
                         backgroundImage: AssetImage(imagePath),
@@ -334,10 +336,42 @@ class _MyAccountPageState extends State<MyAccountPage> {
   }
 
   Future<void> _signOut() async {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (Route<dynamic> route) => false, // Removes all previous routes
-    );
+    setState(() {}); // Trigger a rebuild to show loading if needed
+
+    try {
+      final FirebaseAuth auth = FirebaseAuth.instance;
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      // Check if the current user is signed in with Google
+      final currentUser = auth.currentUser;
+      final providerData = currentUser?.providerData;
+      final isGoogleSignedIn = providerData?.any((info) => info.providerId == 'google.com') ?? false;
+
+      if (isGoogleSignedIn) {
+        // Sign out from Google
+        await googleSignIn.signOut();
+      }
+
+      // Sign out from Firebase
+      await auth.signOut();
+
+      // Navigate to the login screen and remove all previous routes
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error signing out: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: ${e.toString()}')),
+        );
+      }
+    } finally {
+      setState(() {}); // Rebuild to hide loading if shown
+    }
   }
 
   @override
@@ -496,4 +530,3 @@ class _MyAccountPageState extends State<MyAccountPage> {
     );
   }
 }
-
