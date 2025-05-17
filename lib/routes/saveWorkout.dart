@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:proje/routes/addExercise.dart';
+import 'package:proje/routes/addExercise.dart'; // Assuming AddedExerciseData and ExerciseSet are defined here
+
+
 
 class AddWorkoutScheduleScreen extends StatefulWidget {
   const AddWorkoutScheduleScreen({super.key});
@@ -10,7 +12,16 @@ class AddWorkoutScheduleScreen extends StatefulWidget {
 
 class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
   final List<AddedExerciseData> _customExercises = [];
+  // Controller for the workout name text field
+  final TextEditingController _workoutNameController = TextEditingController();
 
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is removed from the widget tree.
+    _workoutNameController.dispose();
+    super.dispose();
+  }
 
 
   // Show details of a specific exercise
@@ -153,18 +164,13 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // --- Updated Leading Button ---
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.black54),
-          tooltip: 'Back to Home', // Added tooltip
+          tooltip: 'Back',
           onPressed: () {
-            // This should lead back to the home page IF this screen
-            // was pushed from a home page.
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
             } else {
-              // Handle case where it cannot pop (e.g., it's the first screen)
-              // Maybe SystemNavigator.pop(); or navigate to a specific home route
               print("Cannot pop, maybe implement exit or specific navigation");
             }
           },
@@ -174,34 +180,31 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        // --- Updated Actions Button (3 dots) ---
         actions: [
           // Only show the delete all button if there are exercises
           if (_customExercises.isNotEmpty)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.black54), // Vertical dots icon
+              icon: const Icon(Icons.more_vert, color: Colors.black54),
               tooltip: 'More Options',
               onSelected: (String result) {
                 switch (result) {
                   case 'deleteAll':
-                    _confirmDeleteAll(); // Call the confirmation function
+                    _confirmDeleteAll();
                     break;
-                // Add other cases if more options are added later
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                 const PopupMenuItem<String>(
                   value: 'deleteAll',
-                  child: ListTile( // Use ListTile for icon + text
+                  child: ListTile(
                     leading: Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
                     title: Text('Delete All Exercises', style: TextStyle(color: Colors.redAccent)),
                   ),
                 ),
-                // Add more PopupMenuItems here for other options if needed
               ],
             )
           else
-            const SizedBox(width: 48), // Placeholder to keep spacing consistent when button is hidden
+            const SizedBox(width: 48),
 
         ],
 
@@ -211,17 +214,29 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Details Workout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 15),
-            _buildDetailRow(
-              icon: Icons.list_alt, title: 'Choose Workout', subtitle: 'Upperbody Workout >',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar( const SnackBar(content: Text('Choose Workout: Not implemented yet')));
-              },
+            // Text field for workout name
+            const Text('Workout Name', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _workoutNameController,
+              decoration: InputDecoration(
+                hintText: 'Enter name for this workout schedule',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
+              ),
+              style: const TextStyle(fontSize: 15),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 15), // Adjust spacing
+
+            // Removed the "Choose Workout" _buildDetailRow here
+
             _buildDetailRow(
-              icon: Icons.fitness_center, title: 'Custom Workout',
+              icon: Icons.fitness_center, title: 'Add Custom Exercise', // Renamed title for clarity
               onTap: () {
                 Navigator.of(context).pushNamed('/addExercise').then((result) {
                   if (result is AddedExerciseData) {
@@ -235,14 +250,14 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
             const SizedBox(height: 30),
             Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('Exercises', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-              Text('${_customExercises.length} Exercise${_customExercises.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 14, color: Colors.grey)), // Updated label
+              Text('${_customExercises.length} Exercise${_customExercises.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 14, color: Colors.grey)),
             ],),
             const SizedBox(height: 15),
 
-            // --- List of Added Custom Exercises (Updated) ---
+            // --- List of Added Custom Exercises ---
             Expanded(
               child: _customExercises.isEmpty
-                  ? const Center( child: Text( 'No custom exercises added yet.\nTap "Custom Workout" to add.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey),),)
+                  ? const Center( child: Text( 'No custom exercises added yet.\nTap "Add Custom Exercise" to add.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey),),) // Updated hint text
                   : ListView.builder(
                 itemCount: _customExercises.length,
                 itemBuilder: (context, index) {
@@ -255,14 +270,12 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
                       leading: const CircleAvatar( backgroundColor: Colors.grey, child: Icon(Icons.image_outlined, color: Colors.white)),
                       title: Text(exercise.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                       subtitle: Text(_formatSetInfo(exercise.sets)),
-                      // --- Updated Trailing: Delete Button ---
                       trailing: IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withOpacity(0.8)),
                         tooltip: 'Delete ${exercise.name}',
-                        onPressed: () => _deleteExercise(index), // Call delete function
+                        onPressed: () => _deleteExercise(index),
                       ),
-                      // --- Updated onTap: Show Details ---
-                      onTap: () => _showExerciseDetails(exercise), // Call show details function
+                      onTap: () => _showExerciseDetails(exercise),
                     ),
                   );
                 },
@@ -270,16 +283,17 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
             ),
             const SizedBox(height: 20),
 
-            // --- Final Save Button (for the whole schedule) ---
+            // --- Final Save Button (Original Logic) ---
             SizedBox( width: double.infinity, child: ElevatedButton(
               onPressed: () {
+                // Reverted to original logic
                 print('Saving entire workout schedule...');
                 print('Custom Exercises Added: ${_customExercises.length}');
-                for (var ex in _customExercises) { print('  - ${ex.name} (${_formatSetInfo(ex.sets)}) Weight: ${ex.weight} Comments: ${ex.comments}'); } // Log more details
+                for (var ex in _customExercises) { print('  - ${ex.name} (${_formatSetInfo(ex.sets)}) Comments: ${ex.comments}'); } // Original log
                 ScaffoldMessenger.of(context).showSnackBar( const SnackBar(content: Text('Workout Schedule Save: Not fully implemented')));
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade300.withOpacity(0.8), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25.0)), elevation: 0),
-              child: const Text('Save Schedule', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), // Updated Button Text
+              child: const Text('Save Schedule', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),),
           ],
         ),
@@ -287,7 +301,7 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
     );
   }
 
-  // Helper widget (keep as before)
+  // Helper widget (keep as before) - Used for "Add Custom Exercise" button
   Widget _buildDetailRow({ required IconData icon, required String title, String? subtitle, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
@@ -300,7 +314,7 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
           Expanded(child: Text(title, style: const TextStyle(fontSize: 15))),
           if (subtitle != null) Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(width: 5),
-          if (subtitle == null) const Icon(Icons.chevron_right, color: Colors.grey),
+          const Icon(Icons.chevron_right, color: Colors.grey), // Always show arrow for this row
         ],),
       ),
     );
