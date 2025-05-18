@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/onboarding': (context) => const OnboardingScreen(),
         '/login': (context) => const LoginScreen(),
-        '/saveWorkout': (context) => const AddWorkoutScheduleScreen(),
+        '/saveWorkout': (context) => const SaveWorkoutScreen(),
         '/addExercise': (context) => const AddExerciseScreen(),
         '/register': (context) => const Register1(),
         '/personal_info_page': (context) => const PersonalInfoPage(),

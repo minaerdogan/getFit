@@ -1,8 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:proje/utils/colors.dart';
 
-class GetReadyScreen extends StatelessWidget {
+class GetReadyScreen extends StatefulWidget {
   const GetReadyScreen({super.key});
+
+  @override
+  State<GetReadyScreen> createState() => _GetReadyScreenState();
+}
+
+class _GetReadyScreenState extends State<GetReadyScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String _userName = 'Loading...';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserName();
+  }
+
+  /// 🔎 **Firestore'dan Kullanıcı İsmini Çekme**
+  Future<void> _fetchUserName() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+
+      try {
+        final doc = await _firestore.collection('users').doc(uid).get();
+        if (doc.exists) {
+          setState(() {
+            _userName = doc.data()?['name'] ?? 'User';
+          });
+        }
+      } catch (e) {
+        print('Firestore read error: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,7 +58,12 @@ class GetReadyScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              const Text('Welcome, Stefani', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+
+              /// 🔥 **Kullanıcı İsmi Gösteriliyor**
+              Text(
+                'Welcome, $_userName',
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
               const Text(
                 'You are all set now, let’s reach your goals together with us',
                 textAlign: TextAlign.center,
@@ -30,10 +73,10 @@ class GetReadyScreen extends StatelessWidget {
                 onPressed: () => Navigator.pushReplacementNamed(context, '/home_screen'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
-                  backgroundColor: AppColors.classicButtonColor, // Using the color from your utils class
-                  foregroundColor: Colors.white, // Optional: Set text color
+                  backgroundColor: AppColors.classicButtonColor,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0), // Optional: Add rounded corners
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
                 child: const Text('Go To Home'),
