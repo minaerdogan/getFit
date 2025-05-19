@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
 import 'package:proje/utils/colors.dart';
 import 'package:proje/utils/textstyles.dart';
 import 'package:proje/utils/dimensions.dart';
@@ -18,6 +19,9 @@ class _Register1State extends State<Register1> {
   final TextEditingController _passwordController = TextEditingController();
   bool _passwordVisible = false;
   bool _isLoading = false; // To show a loading indicator
+
+  // Initialize Firestore instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void dispose() {
@@ -57,41 +61,59 @@ class _Register1State extends State<Register1> {
       FocusScope.of(context).unfocus();
 
       try {
+        // 1. Create user in Firebase Authentication
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        // Optionally, update the user's display name
-        if (userCredential.user != null) {
-          await userCredential.user!.updateDisplayName(name);
-          // You might want to reload the user to see the updated display name immediately
-          // await userCredential.user!.reload();
-          // User? updatedUser = FirebaseAuth.instance.currentUser;
-          // print('User display name updated: ${updatedUser?.displayName}');
+        // Get the newly created user
+        User? user = userCredential.user;
+
+        if (user != null) {
+          // Optionally, update the user's display name in Firebase Auth
+          await user.updateDisplayName(name);
+
+          // 2. Save additional user data to Cloud Firestore
+          await _firestore.collection('users').doc(user.uid).set({
+            'uid': user.uid, // Store UID for easy reference
+            'name': name,
+            'email': email,
+            'createdAt': Timestamp.now(), // Add a timestamp for when the user was created
+            // You can add other fields here as you collect them, e.g.:
+            // 'age': null, // Add fields for personal info page
+            // 'gender': null,
+            // 'height': null,
+            // 'weight': null,
+          });
+
+          print('Registered user: ${user.uid}, Name: $name. Data saved to Firestore.');
+
+          // After successful registration and data saving, navigate
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Registration successful! You can now complete your profile.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Navigate to the personal info page to collect more data
+            Navigator.pushReplacementNamed(context, '/personal_info_page');
+          }
+
+        } else {
+          // This case should ideally not happen if createUserWithEmailAndPassword is successful
+          print('User credential returned null user.');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Registration failed: Could not get user information.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
 
-        print('Registered user: ${userCredential.user!.uid}, Name: $name');
-
-        // After successful registration, you might want to navigate to the login screen,
-        // or directly into the app, or show a success message.
-        // Your current code navigates to '/personal_info_page'. Let's keep that for now
-        // but it's common to go back to login or show a "Registration successful, please login" message.
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Registration successful! You can now log in or complete your profile.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // Decide navigation:
-          // Option 1: Go to personal_info_page (as you had)
-          Navigator.pushReplacementNamed(context, '/personal_info_page');
-          // Option 2: Go back to login page
-          // Navigator.pop(context); // If register was pushed on top of login
-          // Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false); // Or go to login and clear stack
-          // Option 3: Directly log the user in and go to main app (less common for separate registration flow)
-        }
 
       } on FirebaseAuthException catch (e) {
         String errorMessage;
@@ -115,11 +137,12 @@ class _Register1State extends State<Register1> {
           );
         }
       } catch (e) {
+        // Handle other potential errors, including Firestore write errors
         print('General Error: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('An unexpected error occurred. Please try again.'),
+            SnackBar(
+              content: Text('An unexpected error occurred: ${e.toString()}'),
               backgroundColor: Colors.red,
             ),
           );

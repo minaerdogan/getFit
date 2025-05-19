@@ -1,8 +1,6 @@
-// --- add_exercise_screen.dart ---
-
-//Card widget implemented on this page
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
 
 // Model for the data returned by this screen
 class AddedExerciseData {
@@ -40,10 +38,49 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final _weightController = TextEditingController();
   final _commentsController = TextEditingController();
   final List<ExerciseSet> _sets = [];
-  final List<String> _exerciseList = [
-    'Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Pull Ups',
-    'Warm Up', 'Jumping Jack', 'Skipping', // Added examples from other screen
-  ];
+
+  // List to hold exercises fetched from Firestore
+  List<String> _exerciseList = [];
+  bool _isLoadingExercises = true; // Loading state for exercises
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchExercises(); // Fetch exercises when the screen initializes
+  }
+
+  @override
+  void dispose() {
+    _repetitionsController.dispose();
+    _weightController.dispose();
+    _commentsController.dispose();
+    super.dispose();
+  }
+
+  // *** Function to fetch exercises from Firestore ***
+  Future<void> _fetchExercises() async {
+    try {
+      // Get documents from the 'workouts' collection
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('workouts').get();
+
+      // Extract 'workout_name' from each document
+      List<String> fetchedExercises = querySnapshot.docs.map((doc) {
+        // Assuming 'workout_name' is the field containing the exercise name
+        return doc['workout_name'] as String;
+      }).toList();
+
+      setState(() {
+        _exerciseList = fetchedExercises;
+        _isLoadingExercises = false; // Stop loading
+      });
+    } catch (e) {
+      print('Error fetching exercises from Firestore: $e');
+      setState(() {
+        _isLoadingExercises = false; // Stop loading even on error
+        // Optionally, show an error message to the user
+      });
+    }
+  }
 
   void _addSet() {
     if (_selectedExercise == null || _selectedExercise!.isEmpty) {
@@ -106,16 +143,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   }
 
   @override
-  void dispose() {
-    _repetitionsController.dispose();
-    _weightController.dispose();
-    _commentsController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final bool isExerciseDropdownEnabled = _sets.isEmpty;
+    final bool isExerciseDropdownEnabled = _sets.isEmpty && !_isLoadingExercises; // Disable dropdown while loading or if sets are added
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -127,12 +156,15 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         title: const Text('Add Custom Exercise', style: TextStyle(color: Colors.black, fontSize: 18)),
         centerTitle: true,
       ),
-      body: Padding( // Removed SingleChildScrollView here
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<String>(
+            // Show loading indicator or dropdown
+            _isLoadingExercises
+                ? const Center(child: CircularProgressIndicator())
+                : DropdownButtonFormField<String>(
               value: _selectedExercise,
               hint: Text('Choose Exercise', style: TextStyle(color: isExerciseDropdownEnabled ? Colors.grey.shade700 : Colors.grey.shade400)),
               isExpanded: true,
@@ -145,6 +177,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Theme.of(context).primaryColor)),
                 disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
               ),
+              // Use the fetched _exerciseList for dropdown items
               items: _exerciseList.map((String value) => DropdownMenuItem<String>(value: value, child: Text(value))).toList(),
               onChanged: isExerciseDropdownEnabled ? (String? newValue) => setState(() => _selectedExercise = newValue) : null,
             ),
@@ -165,9 +198,9 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
               ),
             ),
             const SizedBox(height: 25),
-            Expanded( // Use Expanded to make the ListView take available vertical space
+            Expanded(
               child: ListView.builder(
-                shrinkWrap: true, // Important for working inside Column & Expanded
+                shrinkWrap: true,
                 physics: const ClampingScrollPhysics(),
                 itemCount: _sets.length,
                 itemBuilder: (context, index) => Card(

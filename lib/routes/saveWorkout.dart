@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:proje/routes/addExercise.dart'; // Assuming AddedExerciseData and ExerciseSet are defined here
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
 
-
+// Assuming AddedExerciseData and ExerciseSet are defined in addExercise.dart
+import 'package:proje/routes/addExercise.dart';
 
 class AddWorkoutScheduleScreen extends StatefulWidget {
   const AddWorkoutScheduleScreen({super.key});
@@ -12,17 +15,17 @@ class AddWorkoutScheduleScreen extends StatefulWidget {
 
 class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
   final List<AddedExerciseData> _customExercises = [];
-  // Controller for the workout name text field
   final TextEditingController _workoutNameController = TextEditingController();
 
+  bool _isSaving = false; // Loading state for saving
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final User? currentUser = FirebaseAuth.instance.currentUser;
 
   @override
   void dispose() {
-    // Clean up the controller when the widget is removed from the widget tree.
     _workoutNameController.dispose();
     super.dispose();
   }
-
 
   // Show details of a specific exercise
   void _showExerciseDetails(AddedExerciseData exercise) {
@@ -149,11 +152,97 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
     );
   }
 
-
   // --- Formatting ---
   String _formatSetInfo(List<ExerciseSet> sets) {
     if (sets.isEmpty) return 'No sets added';
     return '${sets.length} Set${sets.length == 1 ? '' : 's'}';
+  }
+
+  // *** Function to save the workout schedule to Firestore ***
+  Future<void> _saveWorkoutSchedule() async {
+    if (_isSaving) return; // Prevent multiple saves
+
+    final workoutName = _workoutNameController.text.trim();
+
+    if (workoutName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a name for the workout schedule.')),
+      );
+      return;
+    }
+
+    if (_customExercises.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one exercise to save the schedule.')),
+      );
+      return;
+    }
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No user logged in to save the workout.')),
+      );
+      print('Error: No user logged in.');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true; // Start saving state
+    });
+
+    try {
+      // Get the user's document reference
+      DocumentReference userDocRef = _firestore.collection('users').doc(currentUser!.uid);
+
+      // Create a new document in the 'workouts' subcollection
+      // Firestore will auto-generate a unique ID for this workout document
+      await userDocRef.collection('workoutPrograms').add({
+        'workoutName': workoutName,
+        'createdAt': FieldValue.serverTimestamp(), // Add a timestamp
+        'exercises': _customExercises.map((exercise) {
+          // Convert AddedExerciseData to a Map for Firestore
+          return {
+            'name': exercise.name,
+            'weight': exercise.weight,
+            'comments': exercise.comments,
+            'sets': exercise.sets.map((set) {
+              // Convert ExerciseSet to a Map
+              return {
+                'repetitions': set.repetitions,
+                'weight': set.weight, // Weight per set
+              };
+            }).toList(),
+          };
+        }).toList(),
+      });
+
+      print('Workout schedule "$workoutName" saved to Firestore for user ${currentUser!.uid}');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Workout schedule "$workoutName" saved successfully!')),
+        );
+        // Optionally navigate back after saving
+        Navigator.pop(context);
+      }
+
+    } catch (e) {
+      print('Error saving workout schedule: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save workout schedule: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false; // Stop saving state
+        });
+      }
+    }
   }
 
 
@@ -204,10 +293,8 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
               ],
             )
           else
-            const SizedBox(width: 48),
-
+            const SizedBox(width: 48), // Keep spacing consistent
         ],
-
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -231,12 +318,11 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
               ),
               style: const TextStyle(fontSize: 15),
             ),
-            const SizedBox(height: 15), // Adjust spacing
-
-            // Removed the "Choose Workout" _buildDetailRow here
+            const SizedBox(height: 15),
 
             _buildDetailRow(
-              icon: Icons.fitness_center, title: 'Add Custom Exercise', // Renamed title for clarity
+              icon: Icons.fitness_center,
+              title: 'Add Custom Exercise',
               onTap: () {
                 Navigator.of(context).pushNamed('/addExercise').then((result) {
                   if (result is AddedExerciseData) {
@@ -245,19 +331,28 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
                     });
                   }
                 });
-              }, // Navigates to add exercise screen
+              },
             ),
             const SizedBox(height: 30),
-            Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Exercises', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-              Text('${_customExercises.length} Exercise${_customExercises.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-            ],),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Exercises', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text('${_customExercises.length} Exercise${_customExercises.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+              ],
+            ),
             const SizedBox(height: 15),
 
             // --- List of Added Custom Exercises ---
             Expanded(
               child: _customExercises.isEmpty
-                  ? const Center( child: Text( 'No custom exercises added yet.\nTap "Add Custom Exercise" to add.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey),),) // Updated hint text
+                  ? const Center(
+                child: Text(
+                  'No custom exercises added yet.\nTap "Add Custom Exercise" to add.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
                   : ListView.builder(
                 itemCount: _customExercises.length,
                 itemBuilder: (context, index) {
@@ -267,7 +362,8 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 1,
                     child: ListTile(
-                      leading: const CircleAvatar( backgroundColor: Colors.grey, child: Icon(Icons.image_outlined, color: Colors.white)),
+                      leading: const CircleAvatar(
+                          backgroundColor: Colors.grey, child: Icon(Icons.image_outlined, color: Colors.white)),
                       title: Text(exercise.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                       subtitle: Text(_formatSetInfo(exercise.sets)),
                       trailing: IconButton(
@@ -283,18 +379,28 @@ class _AddWorkoutScheduleScreenState extends State<AddWorkoutScheduleScreen> {
             ),
             const SizedBox(height: 20),
 
-            // --- Final Save Button (Original Logic) ---
-            SizedBox( width: double.infinity, child: ElevatedButton(
-              onPressed: () {
-                // Reverted to original logic
-                print('Saving entire workout schedule...');
-                print('Custom Exercises Added: ${_customExercises.length}');
-                for (var ex in _customExercises) { print('  - ${ex.name} (${_formatSetInfo(ex.sets)}) Comments: ${ex.comments}'); } // Original log
-                ScaffoldMessenger.of(context).showSnackBar( const SnackBar(content: Text('Workout Schedule Save: Not fully implemented')));
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade300.withOpacity(0.8), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25.0)), elevation: 0),
-              child: const Text('Save Schedule', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ),),
+            // --- Save Schedule Button ---
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveWorkoutSchedule, // Disable button when saving
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade300.withOpacity(0.8),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25.0)),
+                  elevation: 0,
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                )
+                    : const Text('Save Schedule', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
