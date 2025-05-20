@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
 import '../utils/textstyles.dart';
+// Import fl_chart components
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
+
 
 // Define a simple model to hold workout data fetched from Firestore
 class Workout {
@@ -12,6 +16,21 @@ class Workout {
   Workout({required this.id, required this.name});
 }
 
+// Model to hold workout progress data fetched from the subcollection
+class WorkoutProgressData {
+  final String workoutName;
+  final double percentageCompleted;
+  final double caloriesBurned;
+  final DateTime timestamp; // To order and potentially group data
+
+  WorkoutProgressData({
+    required this.workoutName,
+    required this.percentageCompleted,
+    required this.caloriesBurned,
+    required this.timestamp,
+  });
+}
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,11 +39,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Removed the hardcoded list
-  // final List<String> _workouts = ['Abs Workout', 'Full Body Workout', 'Lower Body Workout',];
-
   List<Workout> _userWorkouts = []; // List to hold workouts fetched from Firestore
+  List<WorkoutProgressData> _workoutProgress = []; // List to hold workout progress data
   bool _isLoadingWorkouts = true; // Loading state for fetching workouts
+  bool _isLoadingProgress = true; // Loading state for fetching progress data
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
@@ -35,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchUserWorkouts(); // Fetch workouts when the screen initializes
+    _fetchWorkoutProgress(); // Fetch workout progress when the screen initializes
   }
 
   // *** Function to fetch user's workout programs from Firestore ***
@@ -121,6 +141,233 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // *** Function to fetch user's workout progress from Firestore ***
+  Future<void> _fetchWorkoutProgress() async {
+    if (currentUser == null) {
+      setState(() {
+        _isLoadingProgress = false;
+      });
+      print('No authenticated user found to fetch workout progress.');
+      return;
+    }
+
+    try {
+      // Get documents from the 'workoutProgress' subcollection for the current user
+      // Order by timestamp to show recent progress
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('workoutProgress') // Use the correct subcollection name
+          .orderBy('timestamp', descending: true)
+          .limit(10) // Limit to the last 10 workouts for the chart
+          .get();
+
+      // Map the documents to our WorkoutProgressData model
+      List<WorkoutProgressData> fetchedProgress = querySnapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return WorkoutProgressData(
+          workoutName: data['workoutName'] as String? ?? 'Unknown Workout',
+          percentageCompleted: (data['percentageCompleted'] as num?)?.toDouble() ?? 0.0,
+          caloriesBurned: (data['caloriesBurned'] as num?)?.toDouble() ?? 0.0,
+          timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        );
+      }).toList();
+
+      setState(() {
+        _workoutProgress = fetchedProgress.reversed.toList(); // Reverse to show oldest first on chart
+        _isLoadingProgress = false; // Stop loading
+      });
+      print('Fetched ${_workoutProgress.length} workout progress entries.');
+
+    } catch (e) {
+      print('Error fetching workout progress from Firestore: $e');
+      setState(() {
+        _isLoadingProgress = false; // Stop loading even on error
+        // Optionally, show an error message to the user
+      });
+    }
+  }
+
+  // Helper function to build the Workout Tracker chart (Bar Chart)
+  Widget _buildWorkoutTrackerChart() {
+    // Always return a SizedBox with a BarChart, even if data is empty
+    return SizedBox(
+      height: 200, // Adjust height as needed
+      child: BarChart(
+        BarChartData(
+          barGroups: _workoutProgress.isEmpty ? [] : _workoutProgress.asMap().entries.map((entry) {
+            int index = entry.key;
+            WorkoutProgressData data = entry.value;
+            return BarChartGroupData(
+              x: index,
+              barRods: [
+                BarChartRodData(
+                  toY: data.percentageCompleted,
+                  color: const Color(0xFF3A7BD5), // Blue color for bars
+                  width: 16, // Adjust bar width as needed
+                  borderRadius: BorderRadius.circular(4), // Rounded corners for bars
+                ),
+              ],
+            );
+          }).toList(),
+          gridData: const FlGridData(show: false), // Hide grid lines
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 25, // Show titles every 25%
+                getTitlesWidget: (value, meta) {
+                  return Text('${value.toInt()}%', style: const TextStyle(fontSize: 10));
+                },
+                reservedSize: 30,
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  // Display formatted timestamp instead of workout name
+                  if (value.toInt() < _workoutProgress.length) {
+                    final timestamp = _workoutProgress[value.toInt()].timestamp;
+                    // Format the date as desired (e.g., 'MM/dd')
+                    final formattedDate = DateFormat('MM/dd').format(timestamp);
+                    return SideTitleWidget(
+                      axisSide: meta.axisSide,
+                      space: 4.0,
+                      child: Text(
+                        formattedDate,
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+                reservedSize: 30,
+              ),
+            ),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: const Color(0xff37434d), width: 1),
+          ),
+          alignment: BarChartAlignment.start, // *** Changed to .start for left alignment ***
+          maxY: 100, // Max y-axis at 100%
+          groupsSpace: 8, // Space between bar groups
+          // *** Tooltip Configuration ***
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (groupData) => Colors.blueGrey, // Use getTooltipColor callback
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                // Display the percentage value
+                return BarTooltipItem(
+                  '${rod.toY.toStringAsFixed(1)}%', // Format the value
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                );
+              },
+            ),
+            // You can customize touch behavior further here if needed
+            // touchCallback: (FlTouchEvent event, BarTouchResponse? response) { ... },
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper function to build the Calorie Tracker chart (Bar Chart)
+  Widget _buildCalorieTrackerChart() {
+    // Always return a SizedBox with a BarChart, even if data is empty
+    return SizedBox(
+      height: 200, // Adjust height as needed
+      child: BarChart( // Using BarChart for calories as well
+        BarChartData(
+          barGroups: _workoutProgress.isEmpty ? [] : _workoutProgress.asMap().entries.map((entry) {
+            int index = entry.key;
+            WorkoutProgressData data = entry.value;
+            return BarChartGroupData(
+              x: index,
+              barRods: [
+                BarChartRodData(
+                  toY: data.caloriesBurned,
+                  color: const Color(0xFF00d2ff), // Cyan color for bars
+                  width: 16, // Adjust bar width as needed
+                  borderRadius: BorderRadius.circular(4), // Rounded corners for bars
+                ),
+              ],
+            );
+          }).toList(),
+          gridData: const FlGridData(show: false), // Hide grid lines
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                // Determine interval based on data, or use a default if empty
+                interval: _workoutProgress.isEmpty ? 50 : (_workoutProgress.map((data) => data.caloriesBurned).reduce(
+                      (value, element) => value > element ? value : element,
+                ) * 1.2) / 4,
+                getTitlesWidget: (value, meta) {
+                  return Text(value.toStringAsFixed(0), style: const TextStyle(fontSize: 10)); // Show whole numbers
+                },
+                reservedSize: 30,
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  // Display formatted timestamp instead of workout name
+                  if (value.toInt() < _workoutProgress.length) {
+                    final timestamp = _workoutProgress[value.toInt()].timestamp;
+                    // Format the date as desired (e.g., 'MM/dd')
+                    final formattedDate = DateFormat('MM/dd').format(timestamp);
+                    return SideTitleWidget(
+                      axisSide: meta.axisSide,
+                      space: 4.0,
+                      child: Text(
+                        formattedDate,
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+                reservedSize: 30,
+              ),
+            ),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: const Color(0xff37434d), width: 1),
+          ),
+          alignment: BarChartAlignment.start, // *** Changed to .start for left alignment ***
+          // Determine maxY based on data, or use a default if empty
+          maxY: _workoutProgress.isEmpty ? 100 : _workoutProgress.map((data) => data.caloriesBurned).reduce(
+                (value, element) => value > element ? value : element,
+          ) * 1.2,
+          groupsSpace: 8, // Space between bar groups
+          // *** Tooltip Configuration ***
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (groupData) => Colors.blueGrey, // Use getTooltipColor callback
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                // Display the calorie value
+                return BarTooltipItem(
+                  rod.toY.toStringAsFixed(1), // Format the value
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                );
+              },
+            ),
+            // You can customize touch behavior further here if needed
+            // touchCallback: (FlTouchEvent event, BarTouchResponse? response) { ... },
+          ),
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -134,8 +381,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               // Navigate to the screen to add a new workout schedule
               Navigator.pushNamed(context, '/saveWorkout').then((_) {
-                // Refresh the workout list when returning from the add screen
+                // Refresh the workout list and progress when returning
                 _fetchUserWorkouts();
+                _fetchWorkoutProgress();
               });
             },
           ),
@@ -147,19 +395,42 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Assuming this is a static graph image
-              Image.asset(
-                'assets/graph.png',
-                fit: BoxFit.contain,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) {
-                  return const SizedBox( // Use SizedBox as a placeholder
-                    height: 150, // Give it a size
-                    child: Center(child: Text('Graph image not found')),
-                  );
-                },
+              // --- Workout Tracker Chart ---
+              const Text('Workout Tracker', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              _isLoadingProgress
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildWorkoutTrackerChart(), // Use the chart builder function
+              // Label for the X-axis
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    'Workout Session / Time',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // --- Calorie Tracker Chart ---
+              const Text('Calorie Tracker', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              _isLoadingProgress
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildCalorieTrackerChart(), // Use the chart builder function
+              // Label for the X-axis
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    'Workout Session / Time',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
+
               Center(
                 child: Text(
                   'Welcome to getFit!',
@@ -228,8 +499,9 @@ class _HomeScreenState extends State<HomeScreen> {
             await Navigator.pushNamed(context, '/my_account');
             setState(() => _selectedIndex = 0); // Reset index when returning
           } else if (index == 0) {
-            // Already on home, no navigation needed unless you want to refresh
-            // _fetchUserWorkouts(); // Uncomment to refresh when tapping Home icon
+            // Already on home, refresh data when tapping Home icon
+            _fetchUserWorkouts();
+            _fetchWorkoutProgress();
           }
         },
         items: const [
