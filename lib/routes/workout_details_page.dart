@@ -299,17 +299,19 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
             ),
             TextButton(
               onPressed: () async { // Made async to await saving progress
-                Navigator.of(context).pop(true); // Close dialog first
-                await _saveWorkoutProgress(); // Save progress before popping page
+                await _saveWorkoutProgress(); // Save progress BEFORE popping page
+                if (mounted) {
+                  Navigator.of(context).pop(true); // Pop with 'true' to signal refresh
+                }
               },
               child: const Text('Exit', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
       },
-    ).then((shouldPop) {
-      if (shouldPop == true) {
-        Navigator.pop(context); // Pop the workout details page
+    ).then((shouldPopAndRefresh) {
+      if (shouldPopAndRefresh == true) {
+        Navigator.pop(context, true); // Pop the workout details page with 'true'
       }
     });
   }
@@ -564,18 +566,17 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.info_outline, size: 22, color: Colors.blueAccent), // Changed icon for details
-                                        onPressed: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => WorkoutDetails2Screen(
-                                              // You'll need to pass actual exercise details here
-                                              // based on how you fetch/store them.
-                                              // Using placeholders for now:
-                                              exerciseName: exercise.name,
-
-                                            ),
-                                          ),
-                                        ),
+                                        // --- UPDATED NAVIGATION TO USE pushNamed ---
+                                        onPressed: () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/workout_details2_screen', // The named route for WorkoutDetails2Screen
+                                            arguments: {
+                                              'exerciseName': exercise.name,
+                                              // WorkoutDetails2Screen will fetch other details
+                                            },
+                                          );
+                                        },
                                       ),
                                     ],
                                   ),

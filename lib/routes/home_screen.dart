@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 BarChartRodData(
                   toY: data.percentageCompleted,
                   color: const Color(0xFF3A7BD5), // Blue color for bars
-                  width: 16, // Adjust bar width as needed
+                  width: 12, // Adjusted bar width
                   borderRadius: BorderRadius.circular(4), // Rounded corners for bars
                 ),
               ],
@@ -234,6 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     return SideTitleWidget(
                       axisSide: meta.axisSide,
                       space: 4.0,
+                      angle: -0.785, // Rotate by -45 degrees (radians)
                       child: Text(
                         formattedDate,
                         style: const TextStyle(fontSize: 10),
@@ -242,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                   return const Text('');
                 },
-                reservedSize: 30,
+                reservedSize: 50, // Increased reserved size for rotated labels
               ),
             ),
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -254,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           alignment: BarChartAlignment.start, // *** Changed to .start for left alignment ***
           maxY: 100, // Max y-axis at 100%
-          groupsSpace: 8, // Space between bar groups
+          groupsSpace: 24, // *** Increased groupsSpace for more spacing ***
           // *** Tooltip Configuration ***
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
@@ -291,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 BarChartRodData(
                   toY: data.caloriesBurned,
                   color: const Color(0xFF00d2ff), // Cyan color for bars
-                  width: 16, // Adjust bar width as needed
+                  width: 12, // Adjusted bar width
                   borderRadius: BorderRadius.circular(4), // Rounded corners for bars
                 ),
               ],
@@ -324,6 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     return SideTitleWidget(
                       axisSide: meta.axisSide,
                       space: 4.0,
+                      angle: -0.785, // Rotate by -45 degrees (radians)
                       child: Text(
                         formattedDate,
                         style: const TextStyle(fontSize: 10),
@@ -332,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                   return const Text('');
                 },
-                reservedSize: 30,
+                reservedSize: 50, // Increased reserved size for rotated labels
               ),
             ),
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -347,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
           maxY: _workoutProgress.isEmpty ? 100 : _workoutProgress.map((data) => data.caloriesBurned).reduce(
                 (value, element) => value > element ? value : element,
           ) * 1.2,
-          groupsSpace: 8, // Space between bar groups
+          groupsSpace: 24, // *** Increased groupsSpace for more spacing ***
           // *** Tooltip Configuration ***
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
@@ -472,15 +474,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      onTap: () {
-                        Navigator.pushNamed(
+                      onTap: () async { // Made onTap async
+                        final bool? shouldRefresh = await Navigator.pushNamed( // Await the result
                           context,
                           '/workout_details_page',
                           arguments: {
                             'workoutId': workout.id,
                             'workoutName': workout.name,
                           },
-                        );
+                        ) as bool?; // Cast the result to bool?
+
+                        if (shouldRefresh == true) {
+                          // If WorkoutDetailsPage returned true, refresh progress data
+                          _fetchWorkoutProgress();
+                        }
                       },
                     ),
                   );
