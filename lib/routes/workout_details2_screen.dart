@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
-import 'package:flutter/scheduler.dart'; // Import SchedulerBinding
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/scheduler.dart';
+import '../utils/exercise_images.dart'; // Asset map import
 
 class WorkoutDetails2Screen extends StatefulWidget {
-  // Now only requires the exerciseName to fetch details from Firestore
   final String exerciseName;
 
   const WorkoutDetails2Screen({
@@ -16,76 +16,68 @@ class WorkoutDetails2Screen extends StatefulWidget {
 }
 
 class _WorkoutDetails2ScreenState extends State<WorkoutDetails2Screen> {
-  String _exerciseDescription = 'Loading description...'; // State variable for description
-  String _exerciseImage = 'assets/placeholder_exercise.png'; // State variable for image path (using placeholder)
-  bool _isLoadingDetails = true; // Loading state for fetching details
+  String _exerciseDescription = 'Loading description...';
+  bool _isLoadingDetails = true;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
-    _fetchExerciseDetails(); // Fetch details when the screen initializes
+    _fetchExerciseDetails();
   }
 
-  // *** Function to fetch exercise details from the top-level 'workouts' collection ***
   Future<void> _fetchExerciseDetails() async {
     try {
-      // Query the 'workouts' collection where workout_name matches the exerciseName
-      QuerySnapshot querySnapshot = await _firestore
+      final querySnapshot = await _firestore
           .collection('workouts')
           .where('workout_name', isEqualTo: widget.exerciseName)
-          .limit(1) // Assuming workout_name is unique or you only need one match
+          .limit(1)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        Map<String, dynamic> data = querySnapshot.docs.first.data() as Map<String, dynamic>;
-
+        final data = querySnapshot.docs.first.data() as Map<String, dynamic>;
         setState(() {
-          // Assuming 'description' field exists in your workouts collection
           _exerciseDescription = data['description'] as String? ?? 'No description available.';
-          // Assuming 'assetPath' or similar field exists for image path (adjust field name if needed)
-          // If your workouts collection doesn't store image paths, you'll need a different strategy
-          _exerciseImage = data['assetPath'] as String? ?? 'assets/placeholder_exercise.png'; // Use fetched path or placeholder
-          _isLoadingDetails = false; // Stop loading
+          _isLoadingDetails = false;
         });
-        print('Fetched details for exercise: ${widget.exerciseName}');
-
       } else {
         setState(() {
           _exerciseDescription = 'Exercise details not found.';
-          _exerciseImage = 'assets/placeholder_exercise.png'; // Keep placeholder
-          _isLoadingDetails = false; // Stop loading
+          _isLoadingDetails = false;
         });
-        print('Exercise "${widget.exerciseName}" not found in workouts collection.');
-        if(mounted) {
+        if (mounted) {
           SchedulerBinding.instance.addPostFrameCallback((_) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Exercise details not found.'), backgroundColor: Colors.orange),
+              const SnackBar(
+                content: Text('Exercise details not found.'),
+                backgroundColor: Colors.orange,
+              ),
             );
           });
         }
       }
-
     } catch (e) {
-      print('Error fetching exercise details: $e');
       setState(() {
         _exerciseDescription = 'Error loading details.';
-        _exerciseImage = 'assets/placeholder_exercise.png'; // Keep placeholder
-        _isLoadingDetails = false; // Stop loading
+        _isLoadingDetails = false;
       });
-      if(mounted) {
+      if (mounted) {
         SchedulerBinding.instance.addPostFrameCallback((_) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading details: ${e.toString()}'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Error loading details: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
           );
         });
       }
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final imagePath = exerciseImageMap[widget.exerciseName]; // Map'ten asset yolu al
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -97,27 +89,31 @@ class _WorkoutDetails2ScreenState extends State<WorkoutDetails2Screen> {
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: _isLoadingDetails // Show loading indicator while fetching
+      body: _isLoadingDetails
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Column(
         children: [
-          // Image section - use fetched image path
+          // Görsel bölümü
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.45,
             width: double.infinity,
-            child: Image.asset( // Assuming image paths are local assets
-              _exerciseImage,
+            child: imagePath != null
+                ? Image.asset(
+              imagePath,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Image.asset( // Fallback to placeholder on error
-                  'assets/placeholder_exercise.png',
-                  fit: BoxFit.cover,
-                );
-              },
+              errorBuilder: (context, error, stackTrace) =>
+                  Image.asset(
+                    'assets/placeholder_exercise.png',
+                    fit: BoxFit.cover,
+                  ),
+            )
+                : Image.asset(
+              'assets/placeholder_exercise.png',
+              fit: BoxFit.cover,
             ),
           ),
 
-          // Details section
+          // Açıklama bölümü
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -138,13 +134,12 @@ class _WorkoutDetails2ScreenState extends State<WorkoutDetails2Screen> {
                         ),
                       ),
                     ),
-                    // Display fetched exercise name (from argument)
                     Text(
                       widget.exerciseName,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
-                    // Display fetched exercise description
                     Expanded(
                       child: SingleChildScrollView(
                         child: Text(
