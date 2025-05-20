@@ -12,13 +12,21 @@ import 'package:proje/routes/home_screen.dart';
 import 'package:proje/routes/my_account.dart';
 import 'package:proje/routes/exercise_done.dart';
 import 'package:proje/routes/workout_details_page.dart';
-import 'package:proje/routes/abs_page.dart';
-import 'package:proje/routes/full_body_page.dart';
-import 'package:proje/routes/lower_body_page.dart';
+
+
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+// Import the generated Firebase options file
+import 'firebase_options.dart'; // Make sure this file exists
+
+// ... other imports
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  // Initialize Firebase with platform-specific options
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -37,7 +45,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/onboarding': (context) => const OnboardingScreen(),
         '/login': (context) => const LoginScreen(),
-        '/saveWorkout': (context) => const SaveWorkoutScreen(),
+        '/saveWorkout': (context) => const AddWorkoutScheduleScreen(),
         '/addExercise': (context) => const AddExerciseScreen(),
         '/register': (context) => const Register1(),
         '/personal_info_page': (context) => const PersonalInfoPage(),
@@ -45,11 +53,7 @@ class MyApp extends StatelessWidget {
         '/home_screen': (context) => const HomeScreen(),
         '/my_account': (context) => const MyAccountPage(),
         '/exercise_done': (context) => const ExerciseDoneScreen(),
-        '/workout_details_page': (context) =>
-        const WorkoutDetailsPage(workoutTitle: '', exercises: []),
-        '/abs_page': (context) => const AbsPage(),
-        '/full_body_page': (context) => const FullBodyPage(),
-        '/lower_body_page': (context) => const LowerBodyPage(),
+        '/workout_details_page': (context) => const WorkoutDetailsPage(),
       },
     );
   }

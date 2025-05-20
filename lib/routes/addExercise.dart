@@ -1,226 +1,275 @@
-// ──────────────────────────────────────────────────────────────
-// lib/routes/add_exercise_screen.dart
-// ──────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
 
-class ExerciseSet {
-  final int repetitions;
-  final String? weight;
-  ExerciseSet({required this.repetitions, this.weight});
-  Map<String, dynamic> toMap() =>
-      {'repetitions': repetitions, 'weight': weight ?? ''};
-}
-
-class _ExerciseEntry {
+// Model for the data returned by this screen
+class AddedExerciseData {
   final String name;
   final List<ExerciseSet> sets;
+  final String? weight; // Make weight nullable as it's optional
   final String comments;
-  _ExerciseEntry(
-      {required this.name, required this.sets, required this.comments});
-  Map<String, dynamic> toMap() => {
-    'name': name,
-    'sets': sets.map((s) => s.toMap()).toList(),
-    'comments': comments
-  };
+
+  AddedExerciseData({
+    required this.name,
+    required this.sets,
+    this.weight,
+    required this.comments,
+  });
+}
+
+// Keep the ExerciseSet class as before, but now it can hold weight
+class ExerciseSet {
+  final int repetitions;
+  final String? weight; // Weight for this specific set (optional)
+
+  ExerciseSet({required this.repetitions, this.weight});
 }
 
 class AddExerciseScreen extends StatefulWidget {
   const AddExerciseScreen({super.key});
+
   @override
   State<AddExerciseScreen> createState() => _AddExerciseScreenState();
 }
 
 class _AddExerciseScreenState extends State<AddExerciseScreen> {
-  // ────────── Workout düzeyi ──────────
-  final _workoutNameController = TextEditingController();
-  final List<_ExerciseEntry> _workoutExercises = [];
-
-  // ────────── Egzersiz düzeyi ─────────
   String? _selectedExercise;
-  int _selectedSetCount = 1;
   final _repetitionsController = TextEditingController();
   final _weightController = TextEditingController();
   final _commentsController = TextEditingController();
-  final List<ExerciseSet> _currentSets = [];
+  final List<ExerciseSet> _sets = [];
 
-  // ────────── Firebase ──────────
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;   //  ← kırmızı çizgi sorunu giderildi
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  // List to hold exercises fetched from Firestore
+  List<String> _exerciseList = [];
+  bool _isLoadingExercises = true; // Loading state for exercises
 
-  // Statik egzersiz havuzu
-  final Map<String, String> _exerciseList = {
-    'Plank': 'Keep your body in a straight line from shoulders to feet while resting on your forearms and toes.',
-    'Sit Ups': 'Lie on your back with knees bent. Use your abdominal muscles to lift your upper body toward your knees.',
-    'Russian Twists': 'Sit with your legs raised and torso leaned back. Twist your upper body to each side, touching the floor beside you.',
-    'Bicycle Crunches': 'Lie on your back and alternate bringing opposite elbow and knee together, simulating a pedaling motion.',
-    'Leg Raises': 'Lie on your back and lift both legs up toward the ceiling, then lower them back down without touching the ground.',
-    'Mountain Climbers': 'In a plank position, drive your knees toward your chest one at a time as fast as you can.',
-    'Jumping Jacks': 'Jump while spreading your legs and raising your arms overhead, then return to the starting position.',
-    'Push Ups': 'Keep your body straight, lower yourself by bending your elbows, then push back up to the starting position.',
-    'Squats': 'Stand with your feet shoulder-width apart, push your hips back and lower your body into a squat, then rise back up.',
-    'Lunges': 'Step forward with one foot and lower your body until both knees are bent, then return to the starting position.',
-    'High Knees': 'Jog in place while lifting your knees up toward your chest as high as you can.',
-    'Burpees': 'Stand with your feet shoulder-width apart, squat down, jump back into plank, then jump forward and up.',
-    'Deadlift': 'With feet shoulder-width apart, hinge at the hips to lower your torso, then stand back up by squeezing your glutes.',
-    'Calf Raises': 'Stand tall and lift your heels to rise onto your toes, then lower back down slowly.',
-    'Glute Bridge': 'Lie on your back with knees bent and lift your hips by squeezing your glutes, then lower down slowly.',
-    'Pull Up': 'Strengthens your back and biceps.',
-    'Overhead Press': 'Strengthens shoulders and triceps.',
-    'Lat Pulldown': 'Targets your back and lats.',
-    'Bicep Curl': 'Isolates the bicep muscle.',
-    'Tricep Extension': 'Focuses on your triceps.',
-    'Bench Press': 'Great for building chest strength.',
-    'Romanian Deadlift': 'Focuses on hamstrings and glutes.',
-    'Leg Extension': 'Builds quadriceps strength.',
-    'Leg Curl': 'Strengthens hamstrings.',
-    'Step Ups': 'Step onto a platform with one foot, push yourself up, then step back down and switch legs.',
-    'Dips': 'Lower your body by bending your arms, then push back up to strengthen your triceps and chest.',
-    'Jump Squats': 'Squat down and jump explosively, landing softly and repeating.',
-    'Side Plank': 'Hold your body on one side, supporting your weight on one arm while keeping your body straight.',
-    'Box Jump': 'Jump onto a sturdy platform, stand up straight, and then jump back down.',
-    'Farmers Walk': 'Hold heavy weights in each hand and walk in a straight line, keeping your back straight.'
-  };
+  @override
+  void initState() {
+    super.initState();
+    _fetchExercises(); // Fetch exercises when the screen initializes
+  }
 
-  // ────────── Yardımcılar ──────────
+  @override
+  void dispose() {
+    _repetitionsController.dispose();
+    _weightController.dispose();
+    _commentsController.dispose();
+    super.dispose();
+  }
+
+  // *** Function to fetch exercises from Firestore ***
+  Future<void> _fetchExercises() async {
+    try {
+      // Get documents from the 'workouts' collection
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('workouts').get();
+
+      // Extract 'workout_name' from each document
+      List<String> fetchedExercises = querySnapshot.docs.map((doc) {
+        // Assuming 'workout_name' is the field containing the exercise name
+        return doc['workout_name'] as String;
+      }).toList();
+
+      setState(() {
+        _exerciseList = fetchedExercises;
+        _isLoadingExercises = false; // Stop loading
+      });
+    } catch (e) {
+      print('Error fetching exercises from Firestore: $e');
+      setState(() {
+        _isLoadingExercises = false; // Stop loading even on error
+        // Optionally, show an error message to the user
+      });
+    }
+  }
+
   void _addSet() {
+    if (_selectedExercise == null || _selectedExercise!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose an exercise first')),
+      );
+      return;
+    }
     final reps = int.tryParse(_repetitionsController.text);
-    if (_selectedExercise == null) {
-      _snack('Select an exercise'); return;
+    final currentWeight = _weightController.text.trim();
+
+    if (reps != null && reps > 0) {
+      setState(() {
+        _sets.add(ExerciseSet(repetitions: reps, weight: currentWeight.isNotEmpty ? currentWeight : null));
+        _repetitionsController.clear();
+        // Optionally clear the weight after adding to a set,
+        // or keep it if the user is likely to use the same weight for the next set.
+        // _weightController.clear();
+      });
+      FocusScope.of(context).unfocus();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid, positive repetitions')),
+      );
     }
-    if (reps == null || reps <= 0) {
-      _snack('Positive repetition count required'); return;
+  }
+
+  void _deleteSet(int index) {
+    setState(() {
+      _sets.removeAt(index);
+    });
+  }
+
+  void _saveExercise() {
+    final exercise = _selectedExercise;
+    final globalWeightString = _weightController.text.trim();
+    final comments = _commentsController.text.trim();
+
+    if (exercise == null || exercise.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose an exercise')),
+      );
+      return;
     }
-    setState(() {
-      for (int i = 0; i < _selectedSetCount; i++) {
-        _currentSets.add(ExerciseSet(
-            repetitions: reps,
-            weight: _weightController.text.isNotEmpty
-                ? _weightController.text
-                : null));
-      }
-      _repetitionsController.clear();
-      _weightController.clear();
-    });
+    if (_sets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one set')),
+      );
+      return;
+    }
+
+    final resultData = AddedExerciseData(
+      name: exercise,
+      sets: List.from(_sets),
+      weight: globalWeightString.isNotEmpty ? globalWeightString : null,
+      comments: comments,
+    );
+
+    Navigator.pop(context, resultData);
   }
 
-  void _commitExercise() {
-    if (_selectedExercise == null) { _snack('Select an exercise'); return; }
-    if (_currentSets.isEmpty) { _snack('Add at least one set'); return; }
-
-    setState(() {
-      _workoutExercises.add(_ExerciseEntry(
-        name: _selectedExercise!,
-        sets: List.from(_currentSets),
-        comments: _commentsController.text.trim(),
-      ));
-      _selectedExercise = null;
-      _currentSets.clear();
-      _commentsController.clear();
-    });
-  }
-
-  Future<void> _saveWorkout() async {
-    final name = _workoutNameController.text.trim();
-    if (name.isEmpty) { _snack('Workout name required'); return; }
-    if (_workoutExercises.isEmpty) { _snack('Add at least one exercise'); return; }
-
-    final user = _firebaseAuth.currentUser;
-    if (user == null) return;
-
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('workoutPrograms')
-        .add({
-      'workoutName': name,
-      'exercises': _workoutExercises.map((e) => e.toMap()).toList(),
-      'completed': false,
-      'createdAt': DateTime.now(),
-    });
-
-    if (!mounted) return;
-    Navigator.pop(context, true);
-  }
-
-  void _snack(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-  // ────────── UI ──────────
   @override
   Widget build(BuildContext context) {
+    final bool isExerciseDropdownEnabled = _sets.isEmpty && !_isLoadingExercises; // Disable dropdown while loading or if sets are added
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Workout')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          TextField(
-            controller: _workoutNameController,
-            decoration: const InputDecoration(labelText: 'Workout Name'),
-          ),
-          const Divider(height: 32),
-          DropdownButtonFormField<String>(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black54),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Add Custom Exercise', style: TextStyle(color: Colors.black, fontSize: 18)),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Show loading indicator or dropdown
+            _isLoadingExercises
+                ? const Center(child: CircularProgressIndicator())
+                : DropdownButtonFormField<String>(
               value: _selectedExercise,
-              hint: const Text('Select exercise'),
-              items: _exerciseList.keys
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedExercise = v)),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _repetitionsController,
-            decoration: const InputDecoration(labelText: 'Repetitions'),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-              value: _selectedSetCount,
-              decoration: const InputDecoration(labelText: 'Set count'),
-              items: List.generate(
-                  15, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedSetCount = v ?? 1)),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _weightController,
-            decoration: const InputDecoration(labelText: 'Weight (kg, optional)'),
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _commentsController,
-            decoration: const InputDecoration(labelText: 'Comments (optional)'),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-              onPressed: _addSet,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Set(s)')),
-          ElevatedButton.icon(
-              onPressed: _commitExercise,
-              icon: const Icon(Icons.fitness_center),
-              label: const Text('Add Exercise to Workout')),
-          const SizedBox(height: 24),
-          if (_workoutExercises.isNotEmpty) ...[
-            const Text('Exercises:', style: TextStyle(fontWeight: FontWeight.bold)),
-            ..._workoutExercises.map((e) => ListTile(
-              title: Text(e.name),
-              subtitle: Text('${e.sets.length} set(s) • '
-                  '${e.comments.isEmpty ? 'No comment' : e.comments}'),
-              trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => setState(
-                          () => _workoutExercises.removeWhere((ex) => ex == e))),
-            ))
-          ],
-          const SizedBox(height: 24),
-          Center(
+              hint: Text('Choose Exercise', style: TextStyle(color: isExerciseDropdownEnabled ? Colors.grey.shade700 : Colors.grey.shade400)),
+              isExpanded: true,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                fillColor: isExerciseDropdownEnabled ? Colors.white : Colors.grey.shade200,
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Theme.of(context).primaryColor)),
+                disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.grey.shade300)),
+              ),
+              // Use the fetched _exerciseList for dropdown items
+              items: _exerciseList.map((String value) => DropdownMenuItem<String>(value: value, child: Text(value))).toList(),
+              onChanged: isExerciseDropdownEnabled ? (String? newValue) => setState(() => _selectedExercise = newValue) : null,
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _repetitionsController,
+              decoration: InputDecoration(labelText: 'Enter repetitions', hintText: 'e.g., 12', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0)),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
-                  onPressed: _saveWorkout, child: const Text('Save Workout')))
-        ]),
+                onPressed: _addSet,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade100, foregroundColor: Colors.blue.shade800, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), padding: const EdgeInsets.symmetric(vertical: 12.0)),
+                child: const Text('Add a set'),
+              ),
+            ),
+            const SizedBox(height: 25),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                itemCount: _sets.length,
+                itemBuilder: (context, index) => Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Set ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('${_sets[index].repetitions} repetition${_sets[index].repetitions == 1 ? '' : 's'}'),
+                            if (_sets[index].weight != null && _sets[index].weight!.isNotEmpty)
+                              Text('${_sets[index].weight} KG', style: const TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
+                          onPressed: () => _deleteSet(index),
+                          tooltip: 'Delete Set',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (_sets.isNotEmpty) const Divider(height: 30, thickness: 1),
+            const Text('Add your weight (Optional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: TextFormField(
+                    controller: _weightController,
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(hintText: 'e.g., 20', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(vertical: 8.0)),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+([.,]?\d{0,2})'))],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('KG', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text('Your comments (Optional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _commentsController,
+              decoration: InputDecoration(hintText: 'e.g., Focus on form', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)), contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0)),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveExercise,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple.shade400, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
+                child: const Text('Save Exercise', style: TextStyle(fontSize: 16)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

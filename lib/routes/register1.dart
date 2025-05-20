@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
 import 'package:proje/utils/colors.dart';
 import 'package:proje/utils/textstyles.dart';
 import 'package:proje/utils/dimensions.dart';
-import 'package:proje/utils/buttons.dart';
+import 'package:proje/utils/buttons.dart'; // Assuming these are your custom button styles
 
 class Register1 extends StatefulWidget {
   const Register1({super.key});
@@ -18,7 +18,10 @@ class _Register1State extends State<Register1> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _passwordVisible = false;
-  bool _isLoading = false;
+  bool _isLoading = false; // To show a loading indicator
+
+  // Initialize Firestore instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void dispose() {
@@ -35,7 +38,7 @@ class _Register1State extends State<Register1> {
     return null;
   }
 
-  String? _validatePassword(String? value) {
+  String? _validatePassword(String? value) { // Added for consistency, you had it inline
     if (value == null || value.isEmpty) {
       return 'Password is required';
     }
@@ -45,8 +48,7 @@ class _Register1State extends State<Register1> {
     return null;
   }
 
-  /// 🔥 **Kullanıcıyı Firebase Auth'a kaydetme ve Firestore'a ekleme**
-  Future<void> _performRegistration() async {
+  Future<void> _performRegistration() async { // Made the function async
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -59,46 +61,108 @@ class _Register1State extends State<Register1> {
       FocusScope.of(context).unfocus();
 
       try {
-        // 🔹 Firebase Auth ile kullanıcı kaydı
+        // 1. Create user in Firebase Authentication
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        if (userCredential.user != null) {
-          // 🔹 Display Name ekleme
-          await userCredential.user!.updateDisplayName(name);
+        // Get the newly created user
+        User? user = userCredential.user;
 
-          // 🔹 Firestore'a kullanıcı bilgilerini ekleme
-          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        if (user != null) {
+          // Optionally, update the user's display name in Firebase Auth
+          await user.updateDisplayName(name);
+
+          // 2. Save additional user data to Cloud Firestore
+          await _firestore.collection('users').doc(user.uid).set({
+            'uid': user.uid, // Store UID for easy reference
             'name': name,
             'email': email,
-            'createdAt': FieldValue.serverTimestamp(),
-            'dob': '',
-            'age': '',
-            'weight': '',
-            'height': '',
-            'gender': ''
+            'createdAt': Timestamp.now(), // Add a timestamp for when the user was created
+            // You can add other fields here as you collect them, e.g.:
+            // 'age': null, // Add fields for personal info page
+            // 'gender': null,
+            // 'height': null,
+            // 'weight': null,
           });
 
-          print('Kullanıcı kaydedildi: ${userCredential.user!.uid}, İsim: $name');
+          print('Registered user: ${user.uid}, Name: $name. Data saved to Firestore.');
 
+          // After successful registration and data saving, navigate
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Registration successful! Complete your profile.'),
+              SnackBar(
+                content: Text('Registration successful! You can now complete your profile.'),
                 backgroundColor: Colors.green,
               ),
             );
+            // Navigate to the personal info page to collect more data
             Navigator.pushReplacementNamed(context, '/personal_info_page');
           }
+
+        } else {
+          // This case should ideally not happen if createUserWithEmailAndPassword is successful
+          print('User credential returned null user.');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Registration failed: Could not get user information.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+
+
+      } on FirebaseAuthException catch (e) {
+        String errorMessage;
+        if (e.code == 'weak-password') {
+          errorMessage = 'The password provided is too weak.';
+        } else if (e.code == 'email-already-in-use') {
+          errorMessage = 'The account already exists for that email.';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'The email address is not valid.';
+        } else {
+          errorMessage = 'An error occurred during registration. Please try again.';
+          print('Firebase Auth Error Code: ${e.code}');
+          print('Firebase Auth Error Message: ${e.message}');
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       } catch (e) {
-        print('Error during registration: $e');
+        // Handle other potential errors, including Firestore write errors
+        print('General Error: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('An unexpected error occurred: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      print("Form is invalid - Please check the fields.");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please correct the errors in the form.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     }
   }
@@ -107,23 +171,24 @@ class _Register1State extends State<Register1> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create Account', style: AppTextStyles.header),
-        backgroundColor: AppColors.primary,
+        title: Text('Create Account', style: AppTextStyles.header), // Changed title slightly
+        backgroundColor: AppColors.primary, // Assuming AppColors.primary is defined
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        leading: IconButton( // Added a back button for better navigation
+          icon: Icon(Icons.arrow_back),
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: Dimensions.mediumPadding,
+          padding: Dimensions.mediumPadding, // Assuming Dimensions.mediumPadding is defined
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.stretch, // Changed to stretch for button width
               children: [
                 SizedBox(height: Dimensions.medium),
+                // Name
                 Text("Full Name", style: AppTextStyles.regular),
                 SizedBox(height: Dimensions.regular),
                 TextFormField(
@@ -133,8 +198,8 @@ class _Register1State extends State<Register1> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    prefixIcon: const Icon(Icons.person_outline),
-                    contentPadding: Dimensions.mediumPadding,
+                    prefixIcon: Icon(Icons.person_outline),
+                    contentPadding: Dimensions.mediumPadding, // Assuming custom padding
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -146,6 +211,8 @@ class _Register1State extends State<Register1> {
                   textInputAction: TextInputAction.next,
                 ),
                 SizedBox(height: Dimensions.medium),
+
+                // Email
                 Text("Email Address", style: AppTextStyles.regular),
                 SizedBox(height: Dimensions.regular),
                 TextFormField(
@@ -155,7 +222,7 @@ class _Register1State extends State<Register1> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    prefixIcon: Icon(Icons.email_outlined),
                     contentPadding: Dimensions.mediumPadding,
                   ),
                   keyboardType: TextInputType.emailAddress,
@@ -164,6 +231,8 @@ class _Register1State extends State<Register1> {
                   textInputAction: TextInputAction.next,
                 ),
                 SizedBox(height: Dimensions.medium),
+
+                // Password
                 Text("Password", style: AppTextStyles.regular),
                 SizedBox(height: Dimensions.regular),
                 TextFormField(
@@ -174,19 +243,71 @@ class _Register1State extends State<Register1> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon: Icon(Icons.lock_outline),
                     contentPadding: Dimensions.mediumPadding,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _passwordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: _isLoading ? null : () {
+                        setState(() {
+                          _passwordVisible = !_passwordVisible;
+                        });
+                      },
+                    ),
                   ),
-                  validator: _validatePassword,
+                  validator: _validatePassword, // Using the separate validator function
                   enabled: !_isLoading,
                   textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _performRegistration(),
+                  onFieldSubmitted: (_) => _isLoading ? null : _performRegistration(),
                 ),
+
                 SizedBox(height: Dimensions.extraLarge),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _performRegistration,
-                  child: const Text('Sign Up'),
+
+                // Sign Up Button
+                SizedBox(
+                  width: double.infinity, // Ensures button takes full width
+                  height: ButtonDimensions.height, // Assuming ButtonDimensions is defined
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: ButtonDimensions.borderRadiusGeometry, // Assuming defined
+                      ),
+                      padding: ButtonDimensions.padding, // Assuming defined
+                    ),
+                    onPressed: _isLoading ? null : _performRegistration,
+                    child: _isLoading
+                        ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                    )
+                        : Text('Sign Up', style: AppTextStyles.button),
+                  ),
                 ),
+                SizedBox(height: Dimensions.medium),
+                // Option to go to Login
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Already have an account? ", style: AppTextStyles.small),
+                    GestureDetector(
+                      onTap: _isLoading ? null : () {
+                        Navigator.pop(context); // Go back to the previous screen (likely login)
+                        // Or Navigator.pushReplacementNamed(context, '/login'); if you want to be explicit
+                      },
+                      child: Text(
+                        'Login',
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.primary, // Use your primary color
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: Dimensions.medium),
               ],
             ),
           ),
