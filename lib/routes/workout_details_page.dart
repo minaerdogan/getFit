@@ -567,16 +567,18 @@ class _WorkoutDetailsPageState extends State<WorkoutDetailsPage> {
                                       IconButton(
                                         icon: const Icon(Icons.info_outline, size: 22, color: Colors.blueAccent), // Changed icon for details
                                         // --- UPDATED NAVIGATION TO USE pushNamed ---
-                                        onPressed: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/workout_details2_screen', // The named route for WorkoutDetails2Screen
-                                            arguments: {
-                                              'exerciseName': exercise.name,
-                                              // WorkoutDetails2Screen will fetch other details
-                                            },
-                                          );
-                                        },
+                                        onPressed: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => WorkoutDetails2Screen(
+                                              // You'll need to pass actual exercise details here
+                                              // based on how you fetch/store them.
+                                              // Using placeholders for now:
+                                              exerciseName: exercise.name,
+
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
