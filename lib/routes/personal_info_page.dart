@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart'; // <--- ADDED: Import Provider
 import '../utils/textstyles.dart';
 import '../utils/colors.dart';
+// Assuming you have these utility files. If not, provide them or remove imports.
+// import '../utils/dimensions.dart';
+// import '../utils/buttons.dart';
+
+// <--- ADDED: Import your UserProfileProvider --->
+import '../providers/get_ready_provider.dart';
 
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({super.key});
@@ -20,13 +27,11 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   final TextEditingController _heightController = TextEditingController();
 
   String? _selectedGender;
-  final List<String> _genders = ['Male', 'Female', 'Other']; // Available gender options
+  final List<String> _genders = ['Male', 'Female', 'Other'];
 
-  bool _isLoading = false; // Add loading state
+  bool _isLoading = false;
 
-  // Initialize Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // Get the current user
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
 
@@ -64,7 +69,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
         return 'Please enter a valid month (01-12)';
       }
 
-      final daysInMonth = DateTime(year, month + 1, 0).day; // Get last day of the month
+      final daysInMonth = DateTime(year, month + 1, 0).day;
       if (day < 1 || day > daysInMonth) {
         return 'Please enter a valid day (01-$daysInMonth for the selected month)';
       }
@@ -73,13 +78,12 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       if (date.isAfter(DateTime.now())) {
         return 'Date of Birth cannot be in the future';
       }
-      return null; // Valid date
+      return null;
     } catch (e) {
       return 'Invalid date entered';
     }
   }
 
-  // Validator for positive nums
   String? _validatePositiveNumber(String? value, String fieldName) {
     if (value == null || value.isEmpty) {
       return '$fieldName cannot be empty';
@@ -99,15 +103,14 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       return '$fieldName must be between 100 CM and 250 CM';
     }
 
-    return null; // Valid
+    return null;
   }
 
-  // Validator for gender
   String? _validateGender(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please select your gender';
     }
-    return null; // Valid
+    return null;
   }
 
   int _calculateAge(String dobText) {
@@ -122,13 +125,13 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       age--;
     }
 
-    return (age > 0 && age <= 110) ? age : 0; // Return 0 if age is negative or greater than 110
+    return (age > 0 && age <= 110) ? age : 0;
   }
 
-  Future<void> _submitForm() async { // Made the function async
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = true; // Start loading
+        _isLoading = true;
       });
 
       _formKey.currentState!.save();
@@ -136,32 +139,33 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       final weight = _weightController.text;
       final height = _heightController.text;
       final gender = _selectedGender;
-      final dob = _dobController.text; // Get DOB text
+      final dob = _dobController.text;
 
-      // Ensure a user is logged in
       if (currentUser != null) {
         try {
-          // Get the user's document reference
           DocumentReference userDocRef = _firestore.collection('users').doc(currentUser!.uid);
 
-          // Update the document with personal information
           await userDocRef.update({
             'dob': dob,
             'age': age,
             'weight': weight,
             'height': height,
             'gender': gender,
-            'profileCompleted': true, // Optional: Add a flag to indicate profile is complete
+            'profileCompleted': true,
           });
 
           print('Personal information saved to Firestore for user: ${currentUser!.uid}');
+
+          // <--- IMPORTANT ADDITION HERE: Refresh the UserProfileProvider data --->
+          // Get the provider instance without listening (listen: false)
+          // because we are only performing an action (refresh), not rebuilding the UI based on its state here.
+          Provider.of<UserProfileProvider>(context, listen: false).refreshUserName();
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Profile information saved successfully!')),
             );
-            // Navigate to the next screen after saving
-            Navigator.pushReplacementNamed(context, '/get_ready'); // Use pushReplacementNamed
+            Navigator.pushReplacementNamed(context, '/get_ready');
           }
 
         } catch (e) {
@@ -177,12 +181,11 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
         } finally {
           if (mounted) {
             setState(() {
-              _isLoading = false; // Stop loading
+              _isLoading = false;
             });
           }
         }
       } else {
-        // Handle case where user is not logged in (shouldn't happen if navigated from registration)
         print('Error: No user is logged in.');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -192,7 +195,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             ),
           );
           setState(() {
-            _isLoading = false; // Stop loading
+            _isLoading = false;
           });
         }
       }
@@ -204,7 +207,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
           const SnackBar(content: Text('Please fix the errors in the form')),
         );
         setState(() {
-          _isLoading = false; // Stop loading if validation fails
+          _isLoading = false;
         });
       }
     }
@@ -292,7 +295,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      onPressed: _isLoading ? null : _submitForm, // Disable button when loading
+                      onPressed: _isLoading ? null : _submitForm,
                       child: _isLoading
                           ? const SizedBox(
                         height: 24,
@@ -332,7 +335,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
-      child: TextFormField( // Use TextFormField for validation
+      child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         decoration: InputDecoration(
@@ -342,30 +345,29 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey[400]!),
           ),
-          enabledBorder: OutlineInputBorder( // Style for when enabled
+          enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey[400]!),
           ),
-          focusedBorder: OutlineInputBorder( // Style for when focused
+          focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
           ),
           filled: true,
-          fillColor: Colors.grey[50], // Slightly off-white background
+          fillColor: Colors.grey[50],
           contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
         ),
-        validator: validator, // Assign the validator
+        validator: validator,
       ),
     );
   }
 
-  // Updated Weight/Height field builder with validator
   Widget _buildWeightHeightField(
       String label,
       TextEditingController controller, {
         required IconData icon,
         required String unit,
-        String? Function(String?)? validator, // Add validator parameter
+        String? Function(String?)? validator,
       }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -375,9 +377,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
           Expanded(
             child: TextFormField(
               controller: controller,
-
               keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
-
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -404,18 +404,15 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             ),
           ),
           const SizedBox(width: 10),
-
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), // Match approx text field height
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-
-              color: Theme.of(context).primaryColorLight, // Example: Light purple
+              color: Theme.of(context).primaryColorLight,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               unit,
               style: TextStyle(
-
                 color: Theme.of(context).primaryColorDark,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -427,11 +424,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     );
   }
 
-
   Widget _buildGenderDropdown() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
-
       child: DropdownButtonFormField<String>(
         value: _selectedGender,
         decoration: InputDecoration(
