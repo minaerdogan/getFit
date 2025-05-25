@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart'; // <--- ADDED: Import Provider
 
+// Import the generated Firebase options file
+import 'firebase_options.dart'; // Make sure this file exists
+
+// Import all your route files (as they were in your original main.dart)
 import 'package:proje/routes/login.dart';
 import 'package:proje/routes/addExercise.dart';
 import 'package:proje/routes/saveWorkout.dart';
@@ -13,13 +18,9 @@ import 'package:proje/routes/my_account.dart';
 import 'package:proje/routes/exercise_done.dart';
 import 'package:proje/routes/workout_details_page.dart';
 
+// <--- ADDED: Import your UserProfileProvider ONLY --->
+import 'package:proje/providers/get_ready_provider.dart';
 
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-// Import the generated Firebase options file
-import 'firebase_options.dart'; // Make sure this file exists
-
-// ... other imports
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +28,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(
+    // <--- ADDED: Wrap your MyApp with ChangeNotifierProvider for UserProfileProvider --->
+    // This makes UserProfileProvider available to all widgets below MyApp in the tree.
+    ChangeNotifierProvider(
+      create: (context) => UserProfileProvider(), // Create an instance of your provider.
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -42,6 +50,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       initialRoute: '/onboarding',
+      // Your 'routes' map remains exactly as it was in your original file.
       routes: {
         '/onboarding': (context) => const OnboardingScreen(),
         '/login': (context) => const LoginScreen(),

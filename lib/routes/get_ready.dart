@@ -1,70 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Cloud Firestore
+import 'package:provider/provider.dart'; // <--- ADDED: Import Provider
 import 'package:proje/utils/colors.dart'; // Assuming this is correctly set up
 
-class GetReadyScreen extends StatefulWidget {
+// <--- ADDED: Import your new UserProfileProvider --->
+import '../providers/get_ready_provider.dart';
+
+class GetReadyScreen extends StatelessWidget { // <--- IMPORTANT: CHANGED from StatefulWidget to StatelessWidget
   const GetReadyScreen({super.key});
 
   @override
-  State<GetReadyScreen> createState() => _GetReadyScreenState();
-}
-
-class _GetReadyScreenState extends State<GetReadyScreen> {
-  String _userName = 'User'; // Default name while loading or if name not found
-  bool _isLoading = true; // To show a loading indicator
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserName(); // Fetch the user's name when the widget initializes
-  }
-
-  Future<void> _fetchUserName() async {
-    final user = FirebaseAuth.instance.currentUser; // Get the current authenticated user
-
-    if (user != null) {
-      try {
-        // Get the user's document from the 'users' collection
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid) // Use the authenticated user's UID
-            .get();
-
-        // Check if the document exists and contains the 'name' field
-        if (userDoc.exists && userDoc.data() != null) {
-          Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-          if (data.containsKey('name')) {
-            setState(() {
-              _userName = data['name']; // Update the state with the fetched name
-            });
-          } else {
-            print('Firestore document exists but does not contain a "name" field.');
-          }
-        } else {
-          print('Firestore document for user ${user.uid} not found.');
-        }
-      } catch (e) {
-        print('Error fetching user name from Firestore: $e');
-        // Optionally show an error message to the user
-      }
-    } else {
-      print('No authenticated user found.');
-      // Handle case where no user is logged in (e.g., navigate back to login)
-    }
-
-    setState(() {
-      _isLoading = false; // Stop loading regardless of success or failure
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // <--- ADDED: Use context.watch to listen to UserProfileProvider --->
+    // This makes the widget rebuild automatically when the provider's data changes.
+    final userProfileProvider = context.watch<UserProfileProvider>();
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: _isLoading
+          child: userProfileProvider.isLoading // <--- Use isLoading from the provider --->
               ? const Center(child: CircularProgressIndicator()) // Show loading indicator
               : Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -80,12 +34,12 @@ class _GetReadyScreenState extends State<GetReadyScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Display the fetched user name
+              // <--- CHANGED: Display the user name from the provider --->
               Text(
-                'Welcome, $_userName',
+                'Welcome, ${userProfileProvider.userName}',
                 style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8), // Adjusted spacing
+              const SizedBox(height: 8),
               const Text(
                 'You are all set now, let’s reach your goals together with us',
                 textAlign: TextAlign.center,
@@ -96,9 +50,9 @@ class _GetReadyScreenState extends State<GetReadyScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                   backgroundColor: AppColors.classicButtonColor, // Using the color from your utils class
-                  foregroundColor: Colors.white, // Optional: Set text color
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0), // Optional: Add rounded corners
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
                 child: const Text('Go To Home'),
